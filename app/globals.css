@@ -1,19 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
-  /* Nintendo 2001 Premium Refined Palette */
-  --c-carbon: #10131a;          /* Base dark background */
-  --c-carbon-nav: #161922;      /* Header / Footer surface */
-  --c-carbon-card: #1c202c;     /* Card surface */
-  --c-carbon-inner: #13161f;    /* Input / Table inner surface */
+  --c-carbon: #10131a;          
+  --c-carbon-nav: #161922;      
+  --c-carbon-card: #1c202c;     
+  --c-carbon-inner: #13161f;    
   
-  --c-canvas: #7a8aba;          /* Periwinkle metallic */
-  --c-canvas-soft: #9fbee7;     /* Pale sky highlight */
-  --c-chrome-indigo: #3d4f97;   /* Rich Indigo borders */
+  --c-canvas: #7a8aba;          
+  --c-canvas-soft: #9fbee7;     
+  --c-chrome-indigo: #3d4f97;   
   
-  --c-primary: #e60012;         /* Nintendo Red */
-  --c-signal: #f68d1f;          /* Signal Orange CTA */
-  --c-amber: #ecab37;           /* Warm Amber accent */
+  --c-primary: #e60012;         
+  --c-signal: #f68d1f;          
+  --c-amber: #ecab37;           
   --c-nav-gold: #e48600;
 
   --text-main: #f8fafc;
@@ -58,19 +57,6 @@ code, pre {
   max-width: 1120px;
   margin: 0 auto;
   padding: 0 1.5rem;
-}
-
-/* Modern Clean Header Nav Link */
-.nav-link {
-  color: var(--text-muted);
-  text-decoration: none;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: color 0.15s ease;
-}
-
-.nav-link:hover {
-  color: var(--text-main);
 }
 
 /* Cards */
@@ -183,6 +169,28 @@ code, pre {
 .input-text:focus {
   border-color: var(--c-canvas);
   box-shadow: 0 0 0 3px rgba(122, 138, 186, 0.2);
+}
+
+/* Skeleton Loading Shimmer */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s infinite ease-in-out;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* Modal Overlay */

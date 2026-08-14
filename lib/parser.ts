@@ -1,8 +1,8 @@
-import { ResultItem } from '@/type';
+import { ResultItem } from "@/type";
 
 export function parseDurationToSeconds(durationStr: string): number {
   if (!durationStr) return 0;
-  const parts = durationStr.split(':').map(Number);
+  const parts = durationStr.split(":").map(Number);
   if (parts.some(isNaN)) return 0;
 
   if (parts.length === 3) {
@@ -21,22 +21,20 @@ export function formatSecondsToHumanReadable(totalSeconds: number): string {
   const seconds = totalSeconds % 60;
 
   const parts: string[] = [];
-  if (hours > 0) parts.push(`${hours} hr${hours > 1 ? 's' : ''}`);
-  if (minutes > 0) parts.push(`${minutes} min${minutes > 1 ? 's' : ''}`);
-  if (seconds > 0 || parts.length === 0) parts.push(`${seconds} sec${seconds !== 1 ? 's' : ''}`);
+  if (hours > 0) parts.push(`${hours} hr${hours > 1 ? "s" : ""}`);
+  if (minutes > 0) parts.push(`${minutes} min${minutes > 1 ? "s" : ""}`);
+  if (seconds > 0 || parts.length === 0) parts.push(`${seconds} sec${seconds !== 1 ? "s" : ""}`);
 
-  return parts.join(' ');
+  return parts.join(" ");
 }
 
 export function extractPlaylistId(input: string): string | null {
   const trimmed = input.trim();
   
-  // Direct playlist ID format
-  if (/^[A-Za-z0-9_-]{12,}$/.test(trimmed) && !trimmed.startsWith('http')) {
+  if (/^[A-Za-z0-9_-]{12,}$/.test(trimmed) && !trimmed.startsWith("http")) {
     return trimmed;
   }
 
-  // Extract from list= URL param
   const listParamMatch = trimmed.match(/[?&]list=([a-zA-Z0-9_-]+)/);
   if (listParamMatch && listParamMatch[1]) {
     return listParamMatch[1];
@@ -45,26 +43,39 @@ export function extractPlaylistId(input: string): string | null {
   return null;
 }
 
-// Deep search helper to find all video items inside any ytInitialData JSON hierarchy
-function findVideosInObject(obj: any, items: ResultItem[], seenTitles: Set<string>) {
-  if (!obj || typeof obj !== 'object') return;
+export function findContinuationTokens(obj: any, tokens: string[] = []): string[] {
+  if (!obj || typeof obj !== "object") return tokens;
+  if (obj.continuationCommand && obj.continuationCommand.token) {
+    tokens.push(obj.continuationCommand.token);
+  }
+  if (Array.isArray(obj)) {
+    for (const item of obj) findContinuationTokens(item, tokens);
+  } else {
+    for (const k of Object.keys(obj)) findContinuationTokens(obj[k], tokens);
+  }
+  return tokens;
+}
 
-  // Pattern 1: lockupViewModel
+export function findVideosInObject(obj: any, items: ResultItem[], seenTitles: Set<string>) {
+  if (!obj || typeof obj !== "object") return;
+
   if (obj.lockupViewModel) {
     const lvm = obj.lockupViewModel;
-    const title = lvm.metadata?.lockupMetadataViewModel?.title?.content || '';
+    const title = lvm.metadata?.lockupMetadataViewModel?.title?.content || "";
     
-    // Look for badge text
-    let duration = '';
-    const badges = lvm.contentImage?.thumbnailViewModel?.overlays?.[0]?.thumbnailBottomOverlayViewModel?.badges || [];
-    for (const b of badges) {
-      if (b.thumbnailBadgeViewModel?.text) {
-        duration = b.thumbnailBadgeViewModel.text;
-        break;
+    let duration = "";
+    const overlays = lvm.contentImage?.thumbnailViewModel?.overlays || [];
+    for (const ov of overlays) {
+      const badges = ov.thumbnailBottomOverlayViewModel?.badges || [];
+      for (const b of badges) {
+        if (b.thumbnailBadgeViewModel?.text) {
+          duration = b.thumbnailBadgeViewModel.text;
+          break;
+        }
       }
     }
 
-    const videoId = lvm.contentId || '';
+    const videoId = lvm.contentId || "";
 
     if (title && !seenTitles.has(title)) {
       seenTitles.add(title);
@@ -77,12 +88,11 @@ function findVideosInObject(obj: any, items: ResultItem[], seenTitles: Set<strin
     }
   }
 
-  // Pattern 2: playlistVideoRenderer
   if (obj.playlistVideoRenderer) {
     const pvr = obj.playlistVideoRenderer;
-    const title = pvr.title?.runs?.[0]?.text || pvr.title?.simpleText || '';
-    const duration = pvr.lengthText?.simpleText || pvr.lengthText?.runs?.[0]?.text || '';
-    const videoId = pvr.videoId || '';
+    const title = pvr.title?.runs?.[0]?.text || pvr.title?.simpleText || "";
+    const duration = pvr.lengthText?.simpleText || pvr.lengthText?.runs?.[0]?.text || "";
+    const videoId = pvr.videoId || "";
 
     if (title && !seenTitles.has(title)) {
       seenTitles.add(title);
@@ -95,12 +105,11 @@ function findVideosInObject(obj: any, items: ResultItem[], seenTitles: Set<strin
     }
   }
 
-  // Pattern 3: playlistPanelVideoRenderer (found in watch?v=...&list=... pages)
   if (obj.playlistPanelVideoRenderer) {
     const ppvr = obj.playlistPanelVideoRenderer;
-    const title = ppvr.title?.simpleText || ppvr.title?.runs?.[0]?.text || '';
-    const duration = ppvr.lengthText?.simpleText || ppvr.lengthText?.runs?.[0]?.text || '';
-    const videoId = ppvr.videoId || '';
+    const title = ppvr.title?.simpleText || ppvr.title?.runs?.[0]?.text || "";
+    const duration = ppvr.lengthText?.simpleText || ppvr.lengthText?.runs?.[0]?.text || "";
+    const videoId = ppvr.videoId || "";
 
     if (title && !seenTitles.has(title)) {
       seenTitles.add(title);
@@ -113,7 +122,6 @@ function findVideosInObject(obj: any, items: ResultItem[], seenTitles: Set<strin
     }
   }
 
-  // Recursively search children
   if (Array.isArray(obj)) {
     for (const child of obj) {
       findVideosInObject(child, items, seenTitles);
@@ -125,18 +133,29 @@ function findVideosInObject(obj: any, items: ResultItem[], seenTitles: Set<strin
   }
 }
 
-export function parseYouTubeHTML(htmlContent: string): { items: ResultItem[]; playlistTitle?: string } {
+export function parseYouTubeHTML(htmlContent: string): { 
+  items: ResultItem[]; 
+  playlistTitle?: string; 
+  apiKey?: string; 
+  clientVersion?: string;
+  continuationToken?: string;
+} {
   const items: ResultItem[] = [];
   const seenTitles = new Set<string>();
   let playlistTitle: string | undefined;
 
-  // Title extraction
   const pageTitleMatch = htmlContent.match(/<title>([^<]+)<\/title>/i);
   if (pageTitleMatch) {
-    playlistTitle = pageTitleMatch[1].replace(' - YouTube', '').trim();
+    playlistTitle = pageTitleMatch[1].replace(" - YouTube", "").trim();
   }
 
-  // Extract from ytInitialData JS object
+  const apiKeyMatch = htmlContent.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
+  const clientVersionMatch = htmlContent.match(/"INNERTUBE_CLIENT_VERSION":"([^"]+)"/);
+  const apiKey = apiKeyMatch ? apiKeyMatch[1] : undefined;
+  const clientVersion = clientVersionMatch ? clientVersionMatch[1] : undefined;
+
+  let continuationToken: string | undefined;
+
   const initialDataMatch = htmlContent.match(/var ytInitialData\s*=\s*({.+?});\s*<\/script>/s) ||
                             htmlContent.match(/window\["ytInitialData"\]\s*=\s*({.+?});/s);
 
@@ -144,53 +163,14 @@ export function parseYouTubeHTML(htmlContent: string): { items: ResultItem[]; pl
     try {
       const data = JSON.parse(initialDataMatch[1]);
       findVideosInObject(data, items, seenTitles);
+      const tokens = findContinuationTokens(data);
+      if (tokens.length > 0) {
+        continuationToken = tokens[0];
+      }
     } catch {
-      // ignore JSON parse errors and continue to fallback
+      // ignore
     }
   }
 
-  // Fallback: Regex extraction on lockup blocks
-  if (items.length === 0) {
-    const lockupRegex = /<yt-lockup-view-model[\s\S]*?<\/yt-lockup-view-model>/g;
-    let match: RegExpExecArray | null;
-
-    while ((match = lockupRegex.exec(htmlContent)) !== null) {
-      const block = match[0];
-
-      let title = '';
-      const titleSpanMatch = block.match(/class="ytLockupMetadataViewModelTitle"[^>]*>[\s\S]*?<span[^>]*>(.*?)<\/span>/s);
-      const titleAttrMatch = block.match(/title="([^"]+)"/);
-
-      if (titleSpanMatch && titleSpanMatch[1]) {
-        title = titleSpanMatch[1].trim();
-      } else if (titleAttrMatch && titleAttrMatch[1]) {
-        title = titleAttrMatch[1].trim();
-      }
-
-      let duration = '';
-      const durationMatch = block.match(/<div class="ytBadgeShapeText">([^<]+)<\/div>/) ||
-                            block.match(/aria-label="[^"]*?(\d+:\d+|\d+:\d+:\d+)[^"]*?"/);
-      if (durationMatch) {
-        duration = durationMatch[1].trim();
-      }
-
-      let videoId = '';
-      const videoIdMatch = block.match(/\/watch\?v=([a-zA-Z0-9_-]{11})/);
-      if (videoIdMatch) {
-        videoId = videoIdMatch[1];
-      }
-
-      if (title && !seenTitles.has(title)) {
-        seenTitles.add(title);
-        items.push({
-          id: items.length + 1,
-          title,
-          duration,
-          videoId
-        });
-      }
-    }
-  }
-
-  return { items, playlistTitle };
+  return { items, playlistTitle, apiKey, clientVersion, continuationToken };
 }

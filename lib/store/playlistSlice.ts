@@ -18,8 +18,8 @@ const initialState: PlaylistState = {
   lastSearchedUrl: '',
 };
 
-// 1 Day in milliseconds: 24 * 60 * 60 * 1000 = 86,400,000 ms
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+// 12 Hours in milliseconds: 12 * 60 * 60 * 1000 = 43,200,000 ms
+const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 
 export const playlistSlice = createSlice({
   name: 'playlist',
@@ -32,7 +32,6 @@ export const playlistSlice = createSlice({
       const { key, result } = action.payload;
       state.currentResult = result;
       state.lastSearchedUrl = key;
-      // Store in cache with current timestamp
       state.cache[key] = {
         data: result,
         timestamp: Date.now(),
@@ -44,7 +43,7 @@ export const playlistSlice = createSlice({
     cleanExpiredCache: (state) => {
       const now = Date.now();
       Object.keys(state.cache).forEach((key) => {
-        if (now - state.cache[key].timestamp > ONE_DAY_MS) {
+        if (now - state.cache[key].timestamp > TWELVE_HOURS_MS) {
           delete state.cache[key];
         }
       });

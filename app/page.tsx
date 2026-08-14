@@ -27,17 +27,16 @@ import {
   FileText, 
   AlertCircle, 
   FileJson, 
-  Zap,
-  Database
+  Zap, 
+  Loader2 
 } from 'lucide-react';
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 
 export default function Home() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isCachedHit, setIsCachedHit] = useState(false);
   
   // Redux state & dispatch
   const dispatch = useDispatch<AppDispatch>();
@@ -59,16 +58,14 @@ export default function Home() {
     if (!url.trim()) return;
 
     setError(null);
-    setIsCachedHit(false);
 
     // Normalize URL key (use playlist ID if available, otherwise trimmed URL)
     const normalizedKey = extractPlaylistId(url) || url.trim();
 
-    // Check Redux Persisted Cache with 1 day TTL
+    // Check Redux Persisted Cache with 12 hour TTL
     const cachedEntry = cache[normalizedKey];
-    if (cachedEntry && Date.now() - cachedEntry.timestamp < ONE_DAY_MS) {
+    if (cachedEntry && Date.now() - cachedEntry.timestamp < TWELVE_HOURS_MS) {
       dispatch(setCurrentResult(cachedEntry.data));
-      setIsCachedHit(true);
       return;
     }
 
@@ -253,16 +250,9 @@ export default function Home() {
         >
           <form onSubmit={handleExtract}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <LinkIcon size={16} color="var(--c-canvas-soft)" /> YouTube Playlist / Watch Link:
-                </label>
-                {isCachedHit && (
-                  <span className="badge badge-periwinkle" style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Database size={11} /> Loaded from 24h Redux Cache
-                  </span>
-                )}
-              </div>
+              <label style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <LinkIcon size={16} color="var(--c-canvas-soft)" /> YouTube Playlist / Watch Link:
+              </label>
 
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <input
@@ -281,7 +271,12 @@ export default function Home() {
                   disabled={loading || !url.trim()}
                   style={{ minWidth: '160px' }}
                 >
-                  {loading ? 'Extracting...' : (
+                  {loading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Extracting...</span>
+                    </>
+                  ) : (
                     <>
                       <span>Extract Metadata</span>
                       <ArrowRight size={16} />
@@ -318,9 +313,77 @@ export default function Home() {
           </AnimatePresence>
         </motion.div>
 
+        {/* ─── SKELETON LOADING SCREEN ─── */}
+        {loading && (
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.3 }}
+            style={{ marginBottom: '2rem' }}
+          >
+            {/* Top Metric Cards Skeleton */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
+              gap: '1rem', 
+              marginBottom: '1.5rem' 
+            }}>
+              <div className="card" style={{ padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div className="skeleton" style={{ width: '48px', height: '48px', borderRadius: 'var(--radius-md)' }} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div className="skeleton" style={{ width: '70px', height: '14px' }} />
+                  <div className="skeleton" style={{ width: '45px', height: '24px' }} />
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div className="skeleton" style={{ width: '48px', height: '48px', borderRadius: 'var(--radius-md)' }} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div className="skeleton" style={{ width: '85px', height: '14px' }} />
+                  <div className="skeleton" style={{ width: '110px', height: '24px' }} />
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <div className="skeleton" style={{ width: '100px', height: '36px', borderRadius: 'var(--radius-md)' }} />
+                <div className="skeleton" style={{ width: '100px', height: '36px', borderRadius: 'var(--radius-md)' }} />
+              </div>
+            </div>
+
+            {/* Video List Table Skeleton */}
+            <div className="card" style={{ padding: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <div className="skeleton" style={{ width: '220px', height: '24px' }} />
+                <div className="skeleton" style={{ width: '200px', height: '36px', borderRadius: 'var(--radius-md)' }} />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                  <div 
+                    key={n} 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between', 
+                      padding: '12px 14px', 
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+                      gap: '1rem'
+                    }}
+                  >
+                    <div className="skeleton" style={{ width: '24px', height: '16px' }} />
+                    <div className="skeleton" style={{ flex: 1, height: '16px', maxWidth: `${75 - (n % 4) * 10}%` }} />
+                    <div className="skeleton" style={{ width: '60px', height: '22px', borderRadius: 'var(--radius-full)' }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Results Area */}
         <AnimatePresence>
-          {result && (
+          {!loading && result && (
             <motion.section 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
